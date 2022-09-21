@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 class CreateCinemaSchema extends Migration
@@ -37,7 +36,118 @@ class CreateCinemaSchema extends Migration
      */
     public function up()
     {
-        throw new \Exception('implement in coding task 4, you can ignore this exception if you are just running the initial migrations.');
+
+        Schema::create('movies', function ($table) {
+            $table->id('id');
+            $table->string('name');
+            $table->boolean('movieStatus')->default(true);
+            $table->timestamps();
+            $table->softDeletes();
+        });
+        Schema::create('locations', function ($table) {
+            $table->id('id');
+            $table->string('name');
+            $table->string('address');
+            $table->timestamps();
+            $table->softDeletes();
+        });
+        Schema::create('screens', function ($table) {
+            $table->id('id');
+            $table->string('screen');
+            $table->unsignedBigInteger("locationId") ;
+            $table->timestamps();
+            $table->foreign('locationId')->references('id')->on('locations')->onDelete('CASCADE');
+            $table->softDeletes();
+        });
+        Schema::create('seat_types', function ($table) {
+            $table->id('id');
+            $table->string('name');
+            $table->string('color')->nullable(true);
+            $table->string('icon')->nullable(true);
+            $table->double('percent')->default(0);
+            $table->enum('type', ["add", 'subtract'])->default("add");
+            $table->unsignedBigInteger("addedby") ->nullable(true);
+            $table->timestamps();
+            $table->foreign('addedby')->references('id')->on('users');
+            $table->softDeletes();
+        });
+
+        Schema::create('seat_prices', function ($table) {
+            $table->id('id');
+            $table->unsignedBigInteger('seat_type_id');
+            $table->double("price");
+            
+            $table->unsignedBigInteger("addedby") ->nullable(true);
+            $table->timestamps();
+            $table->foreign('addedby')->references('id')->on('users');
+            $table->foreign('seat_type_id')->references('id')->on('seat_types');
+            $table->softDeletes();
+        });
+
+
+
+        Schema::create('seats', function ($table) {
+            $table->id('id');
+            $table->string('seat');
+
+            $table->unsignedBigInteger("screenId")->index();
+            $table->unsignedBigInteger("seatTypeId")->index();
+            $table->timestamps();
+            $table->foreign('screenId')->references('id')->on('screens')->onDelete('CASCADE');
+            $table->foreign('seatTypeId')->references('id')->on('seat_types')->onDelete('CASCADE');
+            $table->softDeletes();
+        });
+        Schema::create('showtimes', function ($table) {
+            $table->id('id');
+            $table->dateTime("startTime");
+            $table->dateTime("endTime");
+            // $table->dateTime("endTime");
+            $table->unsignedBigInteger("addedby")->nullable(true);
+            $table->unsignedBigInteger("movieId")->index();
+            $table->unsignedBigInteger("locationId")->index();
+
+            $table->timestamps();
+
+            $table->foreign('movieId')->references('id')->on('movies')->onDelete('CASCADE');
+            $table->foreign('addedby')->references('id')->on('users')->onDelete('SET NULL');
+            $table->foreign('locationId')->references('id')->on('locations')->onDelete('CASCADE');
+            $table->softDeletes();
+        });
+
+        Schema::create('selected_seats', function ($table) {
+            $table->id('id');
+            $table->unsignedBigInteger("movieId")->index();
+            $table->unsignedBigInteger("showtimeId")->index();
+            $table->unsignedBigInteger("seatId");
+            $table->string("orderId", 30);
+            $table->unsignedBigInteger("userId")->index();
+            $table->enum("type", ['selected', 'reserved', 'unavailable']);
+            $table->timestamps();
+
+            $table->foreign('movieId')->references('id')->on('movies')->onDelete('CASCADE');
+            $table->foreign('userId')->references('id')->on('users')->onDelete('CASCADE');
+            $table->foreign('showtimeId')->references('id')->on('showtimes')->onDelete('CASCADE');
+            $table->foreign('seatId')->references('id')->on('seats')->onDelete('CASCADE');
+            
+        });
+
+        Schema::create('user_bookings', function ($table) {
+            $table->id('id');
+            $table->unsignedBigInteger("movieId")->index();
+            $table->unsignedBigInteger("showtimeId")->index();
+            $table->unsignedBigInteger("seatId");
+            $table->string("orderId", 30);
+            $table->integer("price");
+            $table->unsignedBigInteger("userId")->index();
+            $table->timestamps();
+
+            $table->foreign('movieId')->references('id')->on('movies')->onDelete('CASCADE');
+            $table->foreign('userId')->references('id')->on('users')->onDelete('CASCADE');
+            $table->foreign('showtimeId')->references('id')->on('showtimes')->onDelete('CASCADE');
+            $table->foreign('seatId')->references('id')->on('seats')->onDelete('CASCADE');
+            $table->softDeletes();
+        });
+        // throw new \Exception('implement in coding task 4, you can ignore this exception if you are just running the initial migrations.');
     }
 
     /**
@@ -47,5 +157,15 @@ class CreateCinemaSchema extends Migration
      */
     public function down()
     {
+        Schema::dropIfExists('user_bookings');
+        Schema::dropIfExists('selected_seats');
+        Schema::dropIfExists('showtimes');
+        Schema::dropIfExists('seats');
+        Schema::dropIfExists('seat_prices');
+        Schema::dropIfExists('seat_types');
+        Schema::dropIfExists('screens');
+        Schema::dropIfExists('locations');
+        Schema::dropIfExists('movies');
+
     }
 }
